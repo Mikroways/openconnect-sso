@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+# Toma todos los argumentos como parte del comando
+set password $env(PASSWORD)
+set wait_for_connected_timeout 30
+
+# Construir el comando
+eval spawn openconnect-sso {*}$argv
+
+expect {
+    -re "Password.*:" {
+        send -- "$password\r"
+    }
+}
+
+expect {
+    -re "TOTP.*:" {
+        # Pasar al usuario el control para ingresar el TOTP
+        expect_user -re "(.*)\n"
+        set totp $expect_out(1,string)
+        send -- "$totp\r"
+    }
+}
+
+set timeout $wait_for_connected_timeout
+expect {
+    -re ".*connected.*" {
+        puts "Connection established!!!"
+    }
+    timeout {
+      puts "ERROR: No connection established within $wait_for_connected_timeout seconds."
+      exit 2
+    }
+}
+
+interact
